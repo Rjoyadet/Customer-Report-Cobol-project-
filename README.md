@@ -29,7 +29,12 @@ Simple COBOL program that reads a sequential customer file and produces a format
 1. Open PowerShell and go to the project folder:
 ```powershell
 cd path\to\customer-report
-.\customer-report
-
+```
+2. Compile the program
+```powershell 
 cobc -x -free -o customer-report src/customer-report.cbl
+```
+3. run the program
+```powershell
 .\customer-report
+```
