@@ -1,5 +1,5 @@
 # Customer-Report-Cobol-project-
-a cobol project for its original use in business 
+a cobol project for its original use in business. A project made alongside taking Abhishek Rathi's mainframe course class. 
 
 
 # Customer Report (Sequential File Processing)
