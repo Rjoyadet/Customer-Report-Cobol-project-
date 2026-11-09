@@ -1,0 +1,147 @@
+
+**Important:** Each line must be exactly in this format (no extra spaces at the beginning).
+
+---
+
+### 3. COBOL program – `src/customer-report.cbl`
+
+```cobol
+>>SOURCE FREE
+IDENTIFICATION DIVISION.
+PROGRAM-ID. CUSTOMER-REPORT.
+AUTHOR. Your Name.
+DATE-WRITTEN. 2026-10-30.
+
+ENVIRONMENT DIVISION.
+INPUT-OUTPUT SECTION.
+FILE-CONTROL.
+    SELECT CUSTOMER-FILE ASSIGN TO "data/customers.dat"
+        ORGANIZATION IS LINE SEQUENTIAL
+        FILE STATUS IS WS-CUST-STATUS.
+
+    SELECT REPORT-FILE ASSIGN TO "output/customer-report.txt"
+        ORGANIZATION IS LINE SEQUENTIAL
+        FILE STATUS IS WS-REPORT-STATUS.
+
+DATA DIVISION.
+FILE SECTION.
+FD  CUSTOMER-FILE.
+01  CUSTOMER-RECORD.
+    05  CUST-ID            PIC 9(5).
+    05  CUST-NAME          PIC X(20).
+    05  CUST-BALANCE       PIC 9(4)V99.
+    05  CUST-STATE         PIC X(2).
+
+FD  REPORT-FILE.
+01  REPORT-LINE            PIC X(80).
+
+WORKING-STORAGE SECTION.
+01  WS-CUST-STATUS         PIC XX.
+01  WS-REPORT-STATUS       PIC XX.
+01  WS-EOF                 PIC X VALUE "N".
+    88  END-OF-FILE        VALUE "Y".
+
+01  WS-COUNTERS.
+    05  WS-RECORD-COUNT    PIC 9(5) VALUE ZERO.
+    05  WS-TOTAL-BALANCE   PIC 9(7)V99 VALUE ZERO.
+    05  WS-HIGH-BALANCE    PIC 9(4)V99 VALUE ZERO.
+
+01  WS-HEADER-1.
+    05  FILLER             PIC X(35) VALUE "CUSTOMER BALANCE REPORT".
+    05  FILLER             PIC X(15) VALUE "  Generated: ".
+    05  WS-REPORT-DATE     PIC X(10).
+
+01  WS-HEADER-2            PIC X(50) VALUE
+    "ID     NAME                  BALANCE     ST".
+
+01  WS-HEADER-3            PIC X(50) VALUE
+    "-----  --------------------  ----------  --".
+
+01  WS-DETAIL-LINE.
+    05  DL-ID              PIC 9(5).
+    05  FILLER             PIC X(2)  VALUE SPACES.
+    05  DL-NAME            PIC X(20).
+    05  FILLER             PIC X(2)  VALUE SPACES.
+    05  DL-BALANCE         PIC $$,$$9.99.
+    05  FILLER             PIC X(2)  VALUE SPACES.
+    05  DL-STATE           PIC XX.
+
+01  WS-TOTAL-LINE.
+    05  FILLER             PIC X(20) VALUE "TOTAL CUSTOMERS: ".
+    05  TL-COUNT           PIC ZZ,ZZ9.
+    05  FILLER             PIC X(5)  VALUE SPACES.
+    05  FILLER             PIC X(16) VALUE "TOTAL BALANCE: ".
+    05  TL-BALANCE         PIC $$,$$$,$$9.99.
+
+PROCEDURE DIVISION.
+MAIN-PROCEDURE.
+    PERFORM INITIALIZE-PROGRAM
+    PERFORM PROCESS-RECORDS UNTIL END-OF-FILE
+    PERFORM WRITE-TOTALS
+    PERFORM CLEANUP
+    STOP RUN.
+
+INITIALIZE-PROGRAM.
+    OPEN INPUT CUSTOMER-FILE
+    IF WS-CUST-STATUS NOT = "00"
+        DISPLAY "Error opening customer file. Status: " WS-CUST-STATUS
+        STOP RUN
+    END-IF
+
+    OPEN OUTPUT REPORT-FILE
+    IF WS-REPORT-STATUS NOT = "00"
+        DISPLAY "Error opening report file. Status: " WS-REPORT-STATUS
+        STOP RUN
+    END-IF
+
+    ACCEPT WS-REPORT-DATE FROM DATE YYYYMMDD
+
+    WRITE REPORT-LINE FROM WS-HEADER-1
+    MOVE SPACES TO REPORT-LINE
+    WRITE REPORT-LINE
+    WRITE REPORT-LINE FROM WS-HEADER-2
+    WRITE REPORT-LINE FROM WS-HEADER-3.
+
+PROCESS-RECORDS.
+    READ CUSTOMER-FILE
+        AT END
+            SET END-OF-FILE TO TRUE
+        NOT AT END
+            ADD 1 TO WS-RECORD-COUNT
+            ADD CUST-BALANCE TO WS-TOTAL-BALANCE
+
+            IF CUST-BALANCE > WS-HIGH-BALANCE
+                MOVE CUST-BALANCE TO WS-HIGH-BALANCE
+            END-IF
+
+            PERFORM WRITE-DETAIL-LINE
+    END-READ.
+
+WRITE-DETAIL-LINE.
+    MOVE CUST-ID      TO DL-ID
+    MOVE CUST-NAME    TO DL-NAME
+    MOVE CUST-BALANCE TO DL-BALANCE
+    MOVE CUST-STATE   TO DL-STATE
+    WRITE REPORT-LINE FROM WS-DETAIL-LINE.
+
+WRITE-TOTALS.
+    MOVE SPACES TO REPORT-LINE
+    WRITE REPORT-LINE
+
+    MOVE WS-RECORD-COUNT  TO TL-COUNT
+    MOVE WS-TOTAL-BALANCE TO TL-BALANCE
+    WRITE REPORT-LINE FROM WS-TOTAL-LINE
+
+    MOVE SPACES TO REPORT-LINE
+    STRING "Highest balance found: " WS-HIGH-BALANCE
+        DELIMITED BY SIZE INTO REPORT-LINE
+    WRITE REPORT-LINE.
+
+CLEANUP.
+    CLOSE CUSTOMER-FILE
+    CLOSE REPORT-FILE
+    DISPLAY "========================================"
+    DISPLAY "Report generated successfully."
+    DISPLAY "Records processed : " WS-RECORD-COUNT
+    DISPLAY "Report written to : output/customer-report.txt"
+    DISPLAY "========================================".
